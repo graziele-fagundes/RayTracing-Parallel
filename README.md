@@ -11,4 +11,5 @@ sudo apt remove mpich -y
 sudo apt install openmpi-bin libopenmpi-dev -y
  
 # Comandos para rodar:
-mpicc -fopenmp raytracing.c utils.c -o raytracing -lm
+make
+make run
