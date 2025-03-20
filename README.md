@@ -12,4 +12,5 @@ sudo apt install openmpi-bin libopenmpi-dev -y
  
 # Comandos para rodar:
 make
+
 make run
