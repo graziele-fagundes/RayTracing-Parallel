@@ -2,6 +2,7 @@
 
 # Instalar gcc, openmp e mpi:
 sudo apt update && sudo apt upgrade -y
+
 sudo apt install -y build-essential mpich
 
 # Comandos para rodar:
