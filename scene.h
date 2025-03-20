@@ -20,7 +20,7 @@ s_scene scene = {
         {
             .position = {0, 0.001, 0},
             .radius = 0.02,
-            .material.color = {31, 255, 0},
+            .material.color = {33, 255, 0},
             .material.roughness = 1
         },
         {

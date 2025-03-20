@@ -6,6 +6,7 @@
 #include "utils.h"
 #include "scene.h"
 #include <stdio.h>
+#include <time.h>
 
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "stb_image_write.h"
@@ -96,7 +97,7 @@ int PerPixel(float x, float y){
     lightDir[1] = -lightDir[1];
     lightDir[2] = -lightDir[2];
 
-    int bounces = 10;
+    int bounces = 5;
     for (int i = 0; i < bounces; i++){
         s_hitPayload HitPayload = TraceRay(ray);
 
@@ -168,7 +169,6 @@ s_hitPayload TraceRay(s_ray ray) {
             continue;
         }
 
-        // float t0 = (-b + sqrt(discriminant)) / (2 * a);
         float closestT = (-b - sqrt(discriminant)) / (2 * a);
         if (closestT > 0 && closestT < hitDistance){
             hitDistance = closestT;
@@ -183,7 +183,7 @@ s_hitPayload TraceRay(s_ray ray) {
     return ClosestHit(ray, closestSphere, hitDistance);
 }
 
-void saveImage(int *pixels, int width, int height) {
+void saveImage(int *pixels, int width, int height, char *filename) {
     unsigned char *imageData = (unsigned char*)malloc(width * height * 3);
     if (!imageData) {
         printf("Erro ao alocar memória para a imagem!\n");
@@ -198,8 +198,8 @@ void saveImage(int *pixels, int width, int height) {
     }
 
     // Salvar como PNG
-    if (stbi_write_png("output.png", width, height, 3, imageData, width * 3)) {
-        printf("Imagem salva como 'output.png'\n");
+    if (stbi_write_png(filename, width, height, 3, imageData, width * 3)) {
+        printf("Imagem salva como %s\n", filename);
     } else {
         printf("Erro ao salvar a imagem!\n");
     }
@@ -207,18 +207,58 @@ void saveImage(int *pixels, int width, int height) {
     free(imageData);
 }
 
-int main(int argc, char** argv) {
+int sequentialRayTracing() {
     float start, end;
+    start = clock(); // Using clock() for timing in sequential execution
 
-    MPI_Init(&argc, &argv);
+    int* image = malloc(IMAGE_WIDTH * IMAGE_HEIGHT * sizeof(int));
+    if (image == NULL) {
+        fprintf(stderr, "Erro ao alocar memória para a imagem.\n");
+        return -1;
+    }
+
+    printf("Executando ray tracing sequencial...\n");
+
+    for (int y = 0; y < IMAGE_HEIGHT; y++) {
+        for (int x = 0; x < IMAGE_WIDTH; x++) {
+            int colorAcumulated[3] = {0, 0, 0};
+
+            for (int i = 0; i < numSamples; i++) {
+                float jitterX = ((float)rand() / RAND_MAX - 0.5f) / IMAGE_WIDTH;
+                float jitterY = ((float)rand() / RAND_MAX - 0.5f) / IMAGE_HEIGHT;
+                float normX = (2.0f * x) / IMAGE_WIDTH - 1.0f + jitterX;
+                float normY = (2.0f * y) / IMAGE_HEIGHT - 1.0f + jitterY;
+
+                int color = PerPixel(normX, normY);
+                colorAcumulated[0] += (color >> 16) & 0xFF;
+                colorAcumulated[1] += (color >> 8) & 0xFF;
+                colorAcumulated[2] += color & 0xFF;
+            }
+
+            // Calculando a média das amostras
+            int r = colorAcumulated[0] / numSamples;
+            int g = colorAcumulated[1] / numSamples;
+            int b = colorAcumulated[2] / numSamples;
+
+            image[y * IMAGE_WIDTH + x] = (r << 16) | (g << 8) | b;
+        }
+    }
+
+    saveImage(image, IMAGE_WIDTH, IMAGE_HEIGHT, "output_sequential.png");
+    free(image);
+
+    end = clock();
+    printf("Tempo total sequencial: %f segundos\n", (end - start) / CLOCKS_PER_SEC);
+
+    return 0;
+}
+
+int parallelRayTracing(int rank, int size) {
+    double start, end;
     start = MPI_Wtime();
-    
-    int rank, size;
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    MPI_Comm_size(MPI_COMM_WORLD, &size);
 
-    int numThreads = 4;  // Número de threads OpenMP por processo
-    omp_set_num_threads(numThreads); // Define número de threads
+    int numThreads = 4;                 // Número de threads OpenMP por processo
+    omp_set_num_threads(numThreads);    // Define número de threads
 
     int rowsPerProcess = IMAGE_HEIGHT / size;
     int startRow = rank * rowsPerProcess;
@@ -229,7 +269,7 @@ int main(int argc, char** argv) {
     printf("Processo %d: calculando linhas %d a %d com %d threads...\n", rank, startRow, endRow - 1, numThreads);
 
     // Paralelizando o loop com OpenMP
-    #pragma omp parallel for collapse(2)
+    #pragma omp parallel for
     for (int y = startRow; y < endRow; y++) {
         for (int x = 0; x < IMAGE_WIDTH; x++) {
             int colorAcumulated[3] = {0, 0, 0};
@@ -255,28 +295,48 @@ int main(int argc, char** argv) {
         }
     }
 
-    MPI_Barrier(MPI_COMM_WORLD);
-
     int* finalImage = NULL;
     if (rank == 0) {
         finalImage = malloc(IMAGE_WIDTH * IMAGE_HEIGHT * sizeof(int));
     }
 
-    MPI_Gather(localPixels, rowsPerProcess * IMAGE_WIDTH, MPI_INT,
-               finalImage, rowsPerProcess * IMAGE_WIDTH, MPI_INT,
-               0, MPI_COMM_WORLD);
+    MPI_Gather(localPixels,                 // Dados locais
+        rowsPerProcess * IMAGE_WIDTH,       // Número de elementos a enviar
+        MPI_INT,                            // Tipo de dado
+        finalImage,                         // Dados de destino
+        rowsPerProcess * IMAGE_WIDTH,       // Número de elementos a receber 
+        MPI_INT,                            // Tipo de dado
+        0,                                  // Rank do processo raiz                              
+        MPI_COMM_WORLD);                    // Comunicador
 
     if (rank == 0) {
         printf("Processo 0: todos os dados recebidos. Salvando imagem...\n");
-        saveImage(finalImage, IMAGE_WIDTH, IMAGE_HEIGHT);
+        saveImage(finalImage, IMAGE_WIDTH, IMAGE_HEIGHT, "output_parallel.png");
         free(finalImage);
 
         end = MPI_Wtime();
-        printf("Tempo total: %f segundos\n", end - start);
+        printf("Tempo total paralelo: %f segundos\n", end - start);
     }
 
     free(localPixels);
-    printf("Processo %d: finalizando...\n", rank);
+    return 0;
+}
+
+int main(int argc, char** argv) {
+
+    MPI_Init(&argc, &argv);
+    
+    int rank, size;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    MPI_Comm_size(MPI_COMM_WORLD, &size);
+
+    parallelRayTracing(rank, size);
+
+    if (rank == 0)
+    {
+        printf("--------------------------------------\n");
+        sequentialRayTracing();
+    }
 
     MPI_Finalize();
     return 0;
