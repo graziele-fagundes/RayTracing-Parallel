@@ -1,6 +1,12 @@
-# Ray Tracing Recursivo Paralelo e Distribuído em C
+# Ray Tracing Sequencial e Paralelo: Implementação em C com OpenMP e MPI
 
-Geração de imagens utilizando a técnica de Ray Tracing Recursivo, totalmente implementado em C, com integração de OpenMP e MPI para paralelização da execução.
+Geração de imagens utilizando a técnica de Ray Tracing, totalmente implementado em C, com integração de OpenMP e MPI para paralelização da execução, utilizando paralelismo compartilhado e distribuído para otimização do desempenho na renderização.
+
+## 📌 Integrantes do Grupo
+- **João Vitor Farias**  
+- **Graziele Fagundes Martins**
+- **Otávio Salomão Rocha**  
+- **Miguel Rodrigues Botelho**  
 
 
 # Instalação
