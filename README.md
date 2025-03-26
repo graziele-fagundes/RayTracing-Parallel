@@ -19,8 +19,8 @@ Caso esteja rodando o programa em uma máquina com sistema operacional como Linu
 É necessário fazer a instalação de ambos para conseguir rodar aplicações com MPI.
 
 Para isso, é necessário instalar o WSL e o Ubuntu para Windows:
- 1. Baixe o WSL seguindo sua [documentação oficial](https://learn.microsoft.com/pt-br/windows/wsl/install)
- 2. Baixe o Ubuntu diretamente pela Microsoft Store
+ 1. Baixe o **WSL** seguindo sua [documentação oficial](https://learn.microsoft.com/pt-br/windows/wsl/install)
+ 2. Baixe o **Ubuntu** diretamente pela **Microsoft Store**
 
  
 ## 2️⃣ Instalar gcc, openmp e mpi
