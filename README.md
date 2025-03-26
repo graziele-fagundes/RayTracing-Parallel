@@ -9,17 +9,23 @@ Siga os passos abaixos para instalação das bibliotecas necessárias para a exe
 
 Caso esteja rodando o programa em uma máquina com sistema operacional como Linux, ignore o primeiro passo.
 
-## 1️⃣ Baixar WSL e Ubuntu pra Windows
+## 1️⃣ Configuração do Ambiente
 É necessário fazer a instalação de ambos para conseguir rodar aplicações com MPI.
+
+Para isso, é necessário instalar o WSL e o Ubuntu para Windows:
+ 1. Baixe o WSL seguindo sua [documentação oficial](https://learn.microsoft.com/pt-br/windows/wsl/install)
+ 2. Baixe o Ubuntu diretamente pela Microsoft Store
+
  
-## 2️⃣ Instalar gcc, openmp e mpi:
+## 2️⃣ Instalar gcc, openmp e mpi
+No terminal, execute os seguintes comandos:
 ```
 sudo apt update && sudo apt upgrade -y
  
 sudo apt install -y build-essential mpich
 ```
 
-## 3️⃣ Se nao funcionar com o mpich:
+## 3️⃣ Se não funcionar com o mpich
 ```
 sudo apt remove mpich -y
  
